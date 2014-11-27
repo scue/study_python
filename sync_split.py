@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+# encoding: utf-8
+
+import os,sys,subprocess
+import xml.dom.minidom
+from xml.dom.minidom import Node
+
+# 代理环境
+proxy_user=''
+proxy_pass=''
+proxy_host='123.123.123.123'
+proxy_port=12345
+if len(proxy_user) == 0:
+    http_proxy="http://%s:%d" %(proxy_host, proxy_port)
+    https_proxy="http://%s:%d" %(proxy_host, proxy_port)
+else:
+    http_proxy="http://%s:%s@%s:%d" %(proxy_user, proxy_pass, proxy_host, proxy_port)
+    https_proxy="http://%s:%s@%s:%d" %(proxy_user, proxy_pass, proxy_host, proxy_port)
+proxyenv={"http_proxy":http_proxy, "https_proxy":https_proxy}
+
+# 解析.repo/manifest.xml文件，取出project节点
+doc = xml.dom.minidom.parse('.repo/manifest.xml')
+projects = doc.getElementsByTagName('project')
+
+github_projects=[]
+google_projects=[]
+
+errorsync_projects=[]
+
+# 执行同步函数
+def sync_project(project, env=None):
+    """
+    执行同步命令
+    project: 期望同步的Project name
+    """
+    cmd="repo sync %s" %project
+    print '>>>', cmd
+    # 执行同步
+    process = subprocess.Popen(cmd, shell=True, env=env,\
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # 实时读取STDOUT
+    out = process.stdout.readline()
+    while out:
+        print out,
+        out = process.stdout.readline()
+    err = process.stderr.readline()
+    # 实时读取STDERR
+    while err:
+        print err,
+        err = process.stderr.readline()
+    # 等待进程结束获得返回值
+    process.poll()
+    errcode = process.returncode
+    # 若有错误追加到错误数组
+    if errcode != 0:
+        errorsync_projects.append(project)
+
+# 对project进行分类
+# AOSP的Project保存在 google_projects 数组
+# CyanogenMod的Project保存在 github_project 数组
+for node in projects:
+    remote=node.getAttribute('remote')
+    project=node.getAttribute('name')
+    if remote == 'aosp':
+        google_projects.append(project)
+    else:
+        github_projects.append(project)
+
+cur_env=os.environ.copy()
+cur_env["http_proxy"]=http_proxy
+cur_env["https_proxy"]=https_proxy
+# 同步来自Google的Project
+for project in google_projects:
+    sync_project(project, cur_env)
+    sys.exit()
+
+# 同步来自Github的Project
+for project in github_projects:
+    sync_project(project)
+
+# 输出同步出错的Project
+if len(errorsync_projects) != 0:
+    print '>>> 同步出现了错误的Project: '
+    for project in errorsync_projects:
+        print project
+
+    print '>>> 请执行命令以重新同步Project: '
+    for project in errorsync_projects:
+        if project in google_projects:
+            sync_cmd="env http_proxy=%s https_proxy=%s repo sync %s" %(http_proxy, https_proxy, project)
+        else:
+            sync_cmd="repo sync %s" %project
+        print sync_cmd
