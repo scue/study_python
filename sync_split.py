@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-import os,sys,subprocess
+import os,sys,subprocess,getopt
 import xml.dom.minidom
 from xml.dom.minidom import Node
 
@@ -10,13 +10,38 @@ proxy_user=''
 proxy_pass=''
 proxy_host='123.123.123.123'
 proxy_port=12345
+
+try:
+    # Short option syntax: "hv:"
+    # Long option syntax: "help" or "verbose="
+    opts, args = getopt.getopt(sys.argv[1:], "h:p:", ["host=", "port=", "username=", "password="])
+
+except getopt.GetoptError, err:
+    # Print debug info
+    print str(err)
+
+for option, argument in opts:
+    if option in ("-h", "--host"):
+        proxy_host = argument
+    elif option in ("-p", "--port"):
+        proxy_port = int(argument)
+    elif option in ("--username"):
+        proxy_user = argument
+    elif option in ("--password"):
+        proxy_pass = argument
+    else:
+        print 'unknow argument'
+
 if len(proxy_user) == 0:
     http_proxy="http://%s:%d" %(proxy_host, proxy_port)
     https_proxy="http://%s:%d" %(proxy_host, proxy_port)
 else:
     http_proxy="http://%s:%s@%s:%d" %(proxy_user, proxy_pass, proxy_host, proxy_port)
     https_proxy="http://%s:%s@%s:%d" %(proxy_user, proxy_pass, proxy_host, proxy_port)
-proxyenv={"http_proxy":http_proxy, "https_proxy":https_proxy}
+
+proxy_env_str="http_proxy=%s https_proxy=%s" %(http_proxy, https_proxy)
+print "<<< proxy environment: %s" %proxy_env_str
+sys.exit()
 
 # 解析.repo/manifest.xml文件，取出project节点
 doc = xml.dom.minidom.parse('.repo/manifest.xml')
@@ -87,7 +112,7 @@ if len(errorsync_projects) != 0:
     print '>>> 请执行命令以重新同步Project: '
     for project in errorsync_projects:
         if project in google_projects:
-            sync_cmd="env http_proxy=%s https_proxy=%s repo sync %s" %(http_proxy, https_proxy, project)
+            sync_cmd="env %s repo sync %s" %(proxy_env_str, project)
         else:
             sync_cmd="repo sync %s" %project
         print sync_cmd
