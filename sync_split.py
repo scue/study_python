@@ -11,10 +11,15 @@ proxy_pass=''
 proxy_host='123.123.123.123'
 proxy_port=12345
 
+# 输入文件
+inputfile=''
+outputfile='errout.txt'
+
 try:
     # Short option syntax: "hv:"
     # Long option syntax: "help" or "verbose="
-    opts, args = getopt.getopt(sys.argv[1:], "h:p:", ["host=", "port=", "username=", "password="])
+    opts, args = getopt.getopt(sys.argv[1:], "h:p:o:i:", \
+            ["host=", "port=", "output=", "input=",  "username=", "password="])
 
 except getopt.GetoptError, err:
     # Print debug info
@@ -25,6 +30,10 @@ for option, argument in opts:
         proxy_host = argument
     elif option in ("-p", "--port"):
         proxy_port = int(argument)
+    elif option in ("-i", "--input"):
+        inputfile = argument
+    elif option in ("-o", "--output"):
+        outputfile = argument
     elif option in ("--username"):
         proxy_user = argument
     elif option in ("--password"):
@@ -48,7 +57,6 @@ projects = doc.getElementsByTagName('project')
 
 github_projects=[]
 google_projects=[]
-
 errorsync_projects=[]
 
 # 执行同步函数
@@ -98,19 +106,47 @@ for node in projects:
 cur_env=os.environ.copy()
 cur_env["http_proxy"]=http_proxy
 cur_env["https_proxy"]=https_proxy
-# 同步来自Google的Project
-for project in google_projects:
-    sync_project(project, cur_env)
 
-# 同步来自Github的Project
-for project in github_projects:
-    sync_project(project)
+flag_input=False
+if len(inputfile) != 0:
+    try:
+        infd=open(inputfile)
+        flag_input=True
+    except Exception, e:
+        raise e
+    if flag_input:
+        for project in infd:
+            project=project.strip('\n')
+            if project in google_projects:
+                sync_project(project, cur_env)
+            else:
+                sync_project(project)
+        infd.close()
+else:
+    # 同步来自Google的Project
+    for project in google_projects:
+        sync_project(project, cur_env)
+
+    # 同步来自Github的Project
+    for project in github_projects:
+        sync_project(project)
 
 # 输出同步出错的Project
 if len(errorsync_projects) != 0:
+    flag_output=False
+    if len(outputfile) != 0:
+        try:
+            outfd=open(outputfile, "w+")
+            flag_output=True
+        except Exception, e:
+            raise e
     print '>>> 同步出现了错误的Project: '
     for project in errorsync_projects:
         print project
+        if flag_output:
+            outfd.write("%s\n" %project)
+    if flag_output:
+        outfd.close()
 
     print '>>> 请执行命令以重新同步Project: '
     for project in errorsync_projects:
