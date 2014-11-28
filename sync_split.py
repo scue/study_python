@@ -41,7 +41,6 @@ else:
 
 proxy_env_str="http_proxy=%s https_proxy=%s" %(http_proxy, https_proxy)
 print "<<< proxy environment: %s" %proxy_env_str
-sys.exit()
 
 # 解析.repo/manifest.xml文件，取出project节点
 doc = xml.dom.minidom.parse('.repo/manifest.xml')
@@ -86,8 +85,13 @@ def sync_project(project, env=None):
 for node in projects:
     remote=node.getAttribute('remote')
     project=node.getAttribute('name')
+    groups=node.getAttribute('groups')
+    path=node.getAttribute('path')
     if remote == 'aosp':
-        google_projects.append(project)
+        if "notdefault" in groups:
+            google_projects.append(path)
+        else:
+            google_projects.append(project)
     else:
         github_projects.append(project)
 
@@ -97,7 +101,6 @@ cur_env["https_proxy"]=https_proxy
 # 同步来自Google的Project
 for project in google_projects:
     sync_project(project, cur_env)
-    sys.exit()
 
 # 同步来自Github的Project
 for project in github_projects:
