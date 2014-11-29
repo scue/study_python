@@ -96,9 +96,7 @@ for node in projects:
     groups=node.getAttribute('groups')
     path=node.getAttribute('path')
     if remote == 'aosp':
-        if "notdefault" in groups:
-            google_projects.append(path)
-        else:
+        if not 'notdefault' in groups:
             google_projects.append(project)
     else:
         github_projects.append(project)
