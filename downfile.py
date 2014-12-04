@@ -15,13 +15,15 @@ Description:
 
 import httplib
 import threading
-import time
+import getopt
+import sys,os
 
-server="localhost"
-port=8001
-url="/zero.zip" # 下载文件url
-number=100      # 下载线程数
+server="200.200.139.93"
+port=443
+url="/mobileapp/47f00005889e91a2/1.pkg" # 下载文件url
+number=2      # 下载线程数
 timeout = 60000 # 线程超时设定, 单位ms
+
 
 headers={ 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.71 Safari/537.36',
@@ -29,29 +31,68 @@ headers={ 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image
     'Accept-Encoding': 'gzip, deflate, sdch',
     'Accept-Language': 'zh-CN,zh;q=0.8,en-US;q=0.6,en;q=0.4,zh-TW;q=0.2'}
 
-def connslave(index):
-    """请求下载的模拟客户端线程"""
-    conn = httplib.HTTPConnection(server,port)
-    conn.request("GET", url, headers=headers)
-    response = conn.getresponse()
-    if response.status == 200:
-        print "Get OK, client slave number,", index
-        response.read()
+def usage(exitval=0):
+    print "usage: %s -h host -p port -u url -n number -t timeout" %sys.argv[0]
+    print '''
+    -h\thost
+    -p\tport
+    -u\turl\t\tDownload Url, start with "/"
+    -n\tnumber\tDownload threads number
+    -t\ttimeout\tDownload thread timeout setting
+    '''
+    sys.exit(exitval)
+
+try:
+    # Short option syntax: "hv:"
+    # Long option syntax: "help" or "verbose="
+    opts, args = getopt.getopt(sys.argv[1:], "h:p:u:n:t:",\
+            ["host=", "port=", "url=", "number=", "timeout="])
+
+except getopt.GetoptError, err:
+    # Print debug info
+    print str(err)
+    usage()
+
+for option, argument in opts:
+    if option in ("-h", "--host"):
+        server=argument
+    elif option in ("-p", "--port"):
+        port=argument
+    elif option in ("-u", "--url"):
+        url=argument
+    elif option in ("-n", "--number"):
+        number=argument
+    elif option in ("-t", "--timeout"):
+        timeout=argument
+    elif option in ("-v", "--verbose"):
+        verbose = argument
     else:
-        print "response:", response.status
-    conn.close
+        print "Unknow option:", option
 
-threads = []
+class ClientSlave(threading.Thread):
+    """请求下载的类"""
+    def __init__(self, index, url):
+        super(ClientSlave, self).__init__()
+        self.index, self.url = index, url
 
-for i in range(1, number+1):
-    threads.append(threading.Thread(target=connslave, args=(i,)))
+    def run(self):
+        """请求下载的模拟客户端线程"""
+        conn = httplib.HTTPSConnection(server,port)
+        conn.request("GET", self.url, headers=headers)
+        response = conn.getresponse()
+        if response.status == 200:
+            print "Get OK, client slave number,", self.index
+            response.read()
+        else:
+            print "response:", response.status
+        conn.close
 
-for t in threads:
-    t.setDaemon(True)
-    t.start()
-
-for t in threads:
-    t.join(timeout)
+if __name__ == '__main__':
+    threads = []
+    for i in range(1, number+1):
+        threads.append(ClientSlave(i, url))
+    for t in threads:
+        t.start()
 
 # 更简单方式
 # import urllib
