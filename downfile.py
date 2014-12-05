@@ -61,7 +61,7 @@ for option, argument in opts:
     elif option in ("-u", "--url"):
         url=argument
     elif option in ("-n", "--number"):
-        number=argument
+        number=int(argument)
     elif option in ("-t", "--timeout"):
         timeout=argument
     elif option in ("-v", "--verbose"):
@@ -80,8 +80,16 @@ class ClientSlave(threading.Thread):
         conn = httplib.HTTPSConnection(server,port)
         conn.request("GET", self.url, headers=headers)
         response = conn.getresponse()
+        lock = threading.Lock()
         if response.status == 200:
-            print "Get OK, client slave number,", self.index
+            lock.acquire()
+            try:
+                print "Get OK, client slave number %d" %self.index
+                sys.stdout.flush()
+            except Exception, e:
+                raise e
+            finally:
+                lock.release()
             response.read()
         else:
             print "response:", response.status
