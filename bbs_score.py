@@ -60,9 +60,7 @@ class ClientSlave(threading.Thread):
         opener = urllib2.build_opener()
         opener.addheaders.extend(headers)
         f = opener.open(self.url, postdata)
-        if self.filename == None:
-            f.read()
-        else:
+        if self.filename:
             data = f.read()
             f1 = open(self.filename, "wb+")
             try:
