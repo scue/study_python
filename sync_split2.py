@@ -1,5 +1,19 @@
 #!/usr/bin/env python
 # encoding: utf-8
+"""
+File: sync_split2.py
+Author: scue
+Email: scue@vip.qq.com
+Github: github.com/scue
+Description:
+    此脚本主要解决CyanogenMod源码同步时，区分从Github和Google下载的Projects；
+    默认情况下大陆可以直接访问Github，而Google则通常需要穿越城墙才能访问得到；
+使用方法：
+    python sync_split2.py -h proxy_host -p proxy_port
+    之后会提示你怎么使用Shell命令行同步，同步Google相关的Project需要准备好Proxy
+    Enjoy! (´・ω・｀)
+"""
+
 
 import os,sys,getopt
 import xml.dom.minidom
